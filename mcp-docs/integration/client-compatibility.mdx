@@ -1,0 +1,31 @@
+---
+title: "Client compatibility"
+description: "Evidence-backed interoperability without vendor lock-in."
+---
+
+| Client or contract | Transport | Protocol | Tested behavior | Status |
+|---|---|---|---|---|
+| Standard MCP wire behavior | STDIO | 2025-11-25 | initialize, tools/list, safe capabilities call, invalid SQL, stdout purity | PASS: actual release binary |
+| Standard MCP wire behavior | Streamable HTTP | 2025-11-25 | live TCP initialize, tools/list, safe call, invalid SQL, health, metrics, shutdown | PASS: actual release binary |
+| PLOMID capability-scoped suite | STDIO + Streamable HTTP | 2025-11-25 and 2026-07-28 | advertised tools/prompts, schemas, calls, errors, metadata, Origin, limits, framing, shutdown | PASS: `scripts/mcp_capability_conformance.py` |
+| MCP Inspector 2.11.0 | STDIO | 2025-11-25 | strict tools/list, `plomid.capabilities`, `prompts/list`, and `prompts/get` | PASS: actual release binary |
+| MCP Inspector 2.11.0 | Streamable HTTP | 2025-11-25 | strict tools/list, prompts/list/get, safe tool call, unknown-tool error | Configured in CI; local strict tools/list/safe-call passed; prompt/error additions await hosted execution |
+| MCP Inspector 2.11.0 | STDIO | 2026-07-28 modern lifecycle | strict tools/list | PASS: actual release binary |
+| MCP Inspector 2.11.0 | Streamable HTTP | 2026-07-28 modern lifecycle | strict tools/list | PASS: actual live TCP server |
+| MCP Conformance 0.1.16 | HTTP | 2025-11-25 | historical active suite | 8/30; not a pass |
+| MCP Conformance 0.2.0-alpha.11 | HTTP | 2025-11-25 frozen requirements | actual server; 30 required scenarios | 8/30; exit 1 |
+| MCP Conformance 0.2.0-alpha.11 | HTTP | 2026-07-28 frozen requirements | actual server; 37 required scenarios | 12/37; exit 1 |
+| Claude Code | any | unavailable | not run | NOT RUN |
+| OpenAI Codex | any | unavailable | not run | NOT RUN |
+
+The tested protocol revisions are `2025-11-25` (initialize lifecycle) and
+`2026-07-28` (modern lifecycle). The server advertises `tools` and `prompts`,
+including `plomid.safe-query-workflow`; clients should discover capabilities,
+tools, and prompts at runtime. Official frozen requirements were run for both
+revisions and failed at the scores above. Reports retain fixture-specific,
+optional-capability, and newer-feature failures without waiving them. The
+capability-scoped suite is an independent protocol client. Pinned MCP
+Inspector is the available external client and has passed the listed local
+checks; direct tests with Claude Code or Codex have not been run. Claude Code and
+Codex are examples, not the architectural boundary. The frozen suite uses an
+exact official prerelease because 0.1.16 lacks the requirements selector.

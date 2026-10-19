@@ -1,0 +1,10 @@
+{
+  "name": "plomid-mcp-docs",
+  "private": true,
+  "engines": { "node": ">=24.20.0 <25" },
+  "scripts": {
+    "validate": "mintlify validate",
+    "broken-links": "mintlify broken-links",
+    "dev": "mintlify dev"
+  }
+}

@@ -1,0 +1,94 @@
+---
+title: "Tool catalog"
+description: "Registered tool names, descriptions, schemas, scopes, results, and effects."
+---
+
+Clients must call `tools/list`; the catalog is mode- and policy-dependent.
+Inputs are JSON objects. All parameters not marked required are optional. The
+server returns JSON-encoded tool results as MCP text content; do not assume
+`structuredContent` is present.
+
+| Tool | Description | Scope | Database | Side effect |
+|---|---|---|---:|---|
+| `plomid.status` | Server mode and current database integration status | `mcp:read` | health check | none |
+| `plomid.capabilities` | Feature domains, limits, mode and tool names | `mcp:read` | no | none |
+| `plomid.sql.query` | One bounded parameterized read-only statement | `sql:read` | yes | read only |
+| `plomid.sql.explain` | Inspect a supported query plan | `sql:read` | yes | read only |
+| `plomid.schema.list_databases` | Databases visible to configured identity | `schema:read` | yes | metadata read |
+| `plomid.schema.list_schemas` | Schemas visible to configured identity | `schema:read` | yes | metadata read |
+| `plomid.schema.list_tables` | Tables in a schema (defaults to `public`) | `schema:read` | yes | metadata read |
+| `plomid.schema.describe_table` | Columns, keys, and indexes for a table | `schema:read` | yes | metadata read |
+| `plomid.sql.execute` | One explicitly approved DML operation | `sql:write` | yes | mutation; not advertised by default |
+
+## Prompt
+
+The server also advertises the standard MCP `prompts` capability. The prompt
+`plomid.safe-query-workflow` takes no arguments and returns a user-role text
+message describing schema discovery, parameterized read-only SQL, server limits,
+and safe handling of uncertain mutation outcomes. Retrieving this prompt does
+not execute SQL or access the database. Discover it with `prompts/list` and
+retrieve it with `prompts/get`; clients should not assume other prompt names
+exist.
+
+## Status and capabilities
+
+`plomid.status` and `plomid.capabilities` accept `{}`. Status returns:
+
+```json
+{"schema_version":"1","ok":true,"mode":"read-only","database_configured":true,"database_status":"configured-but-not-connected","warnings":["database health check failed; retry plomid.status for current state"]}
+```
+
+The status field is one of `not-configured`, `connected`, or
+`configured-but-not-connected`. Capabilities returns `schema_version`,
+`server_mode`, `database_configured`, `database_integration`, `tools`,
+`prompts`, `limits`, and `feature_domains`. The `prompts` list currently
+contains `plomid.safe-query-workflow`. This operation does not require
+database connectivity.
+
+## SQL query and EXPLAIN
+
+Both tools accept this schema (only `sql` is required; unknown fields are
+rejected):
+
+```json
+{
+  "sql": "SELECT id FROM events WHERE id = $1",
+  "parameters": ["synthetic-id"],
+  "row_limit": 100,
+  "timeout_ms": 10000
+}
+```
+
+`plomid.sql.explain` expects an `EXPLAIN` statement. Successful query results
+contain `schema_version`, `data` (`columns`, `rows`, `truncated`, `warnings`),
+and `meta` (`request_id`, `elapsed_ms`, `truncated`, `warnings`, `retryable`).
+Results are bounded by server row and encoded-size limits. SQL errors are
+returned through MCP/JSON-RPC error handling; do not blindly retry a timed-out
+mutation (writes use a separate contract).
+
+## Schema discovery
+
+`list_databases` and `list_schemas` accept `{}` and return arrays of visible
+names. `list_tables` accepts `{"schema":"public"}`; the `schema` property is
+optional and nullable, defaulting to `public`. It returns table entries with
+`schema`, `name`, and `kind`. `describe_table` requires both strings:
+
+```json
+{"schema":"public","table":"events"}
+```
+
+It returns a table description with `schema`, `name`, `columns` (name, data
+type, nullability and ordinal), `keys`, and `indexes`. Authenticated schema
+allowlists apply in addition to database grants.
+
+## Controlled write
+
+`plomid.sql.execute` is removed from `tools/list` unless the server is
+configured for `controlled-write` and `write_enabled=true`. It requires a
+single validated DML statement, `sql`, `approval_token`, and an
+`idempotency_key` of 16–256 characters; it optionally accepts `parameters`
+and `timeout_ms`. Never place a real approval token in an example, log, or
+client transcript. The caller needs `sql:write`, configured approval policy,
+and database privileges. A timed-out/disconnected write may have committed;
+check the outcome safely before retrying. See the
+[write contract](/tools/write-contract).

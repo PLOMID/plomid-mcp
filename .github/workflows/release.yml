@@ -1,0 +1,168 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: "🧪 Release gate · quality and SBOM"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: "🔧 Install pinned Rust toolchain"
+        run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+      - name: "🧹 Format check"
+        run: cargo fmt --all -- --check
+      - name: "🔍 Workspace checks"
+        run: cargo check --workspace --all-targets --locked
+      - name: "🛡️ Clippy (warnings denied)"
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: "🧪 Unit, integration, and documentation tests"
+        run: |
+          echo '::group::🧪 Workspace tests'
+          cargo test --workspace --locked
+          echo '::endgroup::'
+          echo '::group::📚 Documentation tests'
+          cargo test --workspace --doc --locked
+          echo '::endgroup::'
+      - name: "🧾 Generate SBOMs"
+        run: |
+          cargo install cargo-cyclonedx --locked --version 0.5.9
+          cargo cyclonedx --format json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-sboms
+          path: |
+            plomid-mcp.cdx.json
+            crates/plomid-security/plomid-security.cdx.json
+
+  package:
+    name: "📦 Build and validate · ${{ matrix.target }}"
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            binary: target/x86_64-unknown-linux-gnu/release/plomid-mcp
+            stdio_only: false
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            binary: target/aarch64-unknown-linux-gnu/release/plomid-mcp
+            stdio_only: false
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            binary: target/x86_64-apple-darwin/release/plomid-mcp
+            stdio_only: false
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            binary: target/aarch64-apple-darwin/release/plomid-mcp
+            stdio_only: false
+          - runner: windows-2022
+            target: x86_64-pc-windows-msvc
+            binary: target/x86_64-pc-windows-msvc/release/plomid-mcp.exe
+            stdio_only: true
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            binary: target/aarch64-pc-windows-msvc/release/plomid-mcp.exe
+            stdio_only: true
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: "🔧 Install pinned Rust toolchain"
+        run: rustup toolchain install 1.99.0 --profile minimal
+      - name: "🎯 Install target ${{ matrix.target }}"
+        run: rustup target add ${{ matrix.target }}
+      - name: "🏗️ Build release binary"
+        run: cargo build --workspace --release --locked --target ${{ matrix.target }}
+      - name: Download generated SBOMs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-sboms
+          path: .
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: "📦 Verify version and create package"
+        shell: bash
+        run: |
+          python -c 'import subprocess,sys; actual=subprocess.check_output([sys.argv[1], "--version"], text=True).split()[-1]; expected=sys.argv[2].removeprefix("v"); assert actual == expected, f"tag {expected} does not match binary {actual}"' \
+            "${{ matrix.binary }}" "$GITHUB_REF_NAME"
+          python scripts/package_release.py \
+            --binary "${{ matrix.binary }}" \
+            --target "${{ matrix.target }}" \
+            --output dist
+      - name: "✅ Verify checksum, package contents, and protocol"
+        run: |
+          package=$(find dist -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print -quit)
+          test -n "$package"
+          if [[ "${{ matrix.stdio_only }}" == "true" ]]; then
+            python scripts/validate_package.py "$package" --stdio-only
+          else
+            python scripts/validate_package.py "$package"
+          fi
+        shell: bash
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: "🚀 Attest and publish verified artifacts"
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: "🔐 Verify checksums and release matrix"
+        run: |
+          cd dist
+          for checksum in *.sha256; do
+            test -s "$checksum"
+            shasum --check "$checksum"
+          done
+          test "$(find . -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' \) | wc -l)" -eq 6
+      - name: "🧾 Attest Unix package provenance"
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: 'dist/*.tar.gz'
+      - name: "🧾 Attest Windows package provenance"
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: 'dist/*.zip'
+      - name: "🔎 Verify provenance before publication"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for package in dist/*.tar.gz dist/*.zip; do
+            gh attestation verify "$package" --repo "$GITHUB_REPOSITORY"
+          done
+      - name: "🚀 Publish verified packages and checksums"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.zip dist/*.sha256 --verify-tag --generate-notes
+      - name: "✅ Verify published release provenance"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p published
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern '*.tar.gz' --pattern '*.zip' --dir published --clobber
+          for package in published/*.tar.gz published/*.zip; do
+            gh attestation verify "$package" --repo "$GITHUB_REPOSITORY"
+          done

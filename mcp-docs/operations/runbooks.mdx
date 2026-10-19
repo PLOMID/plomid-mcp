@@ -1,0 +1,137 @@
+---
+title: "Runbooks"
+description: "Symptoms, safe diagnosis, remediation, and escalation for common failures."
+---
+
+Use synthetic requests and redacted logs. Never collect bearer tokens, passwords,
+SQL parameters, full customer rows, or private keys in a ticket. The HTTP
+`/metrics` endpoint contains aggregate counters; `/healthz` and `/readyz` return
+only generic status.
+
+## Startup or configuration failure
+
+**Symptoms:** process exits before serving, reports invalid bind/TLS/mode, or
+does not find the database URL.
+
+**Diagnose:** run `plomid-mcp --config /path/to/config.toml validate` and
+`plomid-mcp --version`. Confirm config file ownership is restricted and inspect
+field names/defaults in the configuration reference; do not print environment
+values containing credentials.
+
+**Expected:** exit status 0 for valid config; validation errors name the field
+but not the secret. Correct the field or secret-manager injection, then rerun
+validation and launch. Escalate if a secret appears in diagnostics or config
+validation accepts a non-loopback HTTP bind without TLS.
+
+## MCP initialization, version negotiation, or tool discovery
+
+**Symptoms:** client reports handshake failure, incompatible protocol, or an
+empty tool list.
+
+**Diagnose:** verify the client supports protocol `2025-11-25` and the chosen
+transport; use MCP Inspector or the repository's `scripts/mcp_stdio_smoke.py`
+against the intended binary. For HTTP, check `/healthz`, then verify the URL
+ends with `/mcp` and that the Host/Origin values are allowed.
+
+**Expected:** initialize returns a negotiated version and `tools/list` returns
+the enabled tools. Fix executable path, config, URL, or client transport and
+retry. Escalate a server crash, malformed JSON-RPC response, or unrequested
+capability advertisement.
+
+## STDIO framing or protocol corruption
+
+**Symptoms:** client cannot parse responses or sees text before the first MCP
+response.
+
+**Diagnose:** separate stdout and stderr; stdout must contain only MCP frames.
+Run the real-process smoke test and inspect stderr with secrets redacted.
+
+**Expected:** valid JSON-RPC responses on stdout and structured diagnostics on
+stderr. Remove shell banners/wrappers that write to stdout. Do not redirect
+stderr into the protocol stream. Escalate if the binary itself writes a banner
+or log line to stdout.
+
+## HTTP listener, Host/Origin, or TLS failure
+
+**Symptoms:** connection refused, 400/403, TLS handshake failure, or browser
+origin rejected.
+
+**Diagnose:** confirm the configured bind and `/healthz`; use a loopback origin
+for local development. For remote deployment verify certificate/key pair,
+certificate chain, reverse-proxy forwarding, allowed Host/Origin, and bearer
+configuration without logging authorization headers.
+
+**Expected:** loopback listener responds; hostile Host/Origin is rejected;
+non-loopback bind requires TLS and configured identities. Correct certificate,
+proxy, or allowlists, then recheck from the intended network. Escalate any
+unexpected public bind, unauthorized success, or certificate verification
+bypass.
+
+## Authentication or authorization failure
+
+**Symptoms:** 401/403 or an MCP access-denied tool error.
+
+**Diagnose:** check token digest provisioning, token validity in the secret
+manager, configured scopes, and schema allowlist. Never paste bearer values
+into commands, logs, or tickets.
+
+**Expected:** unauthenticated remote requests are rejected when auth is
+required; valid identities still need the operation scope. Correct identity
+policy and retry with a newly provisioned token if rotation is needed. Escalate
+unexpected data access or cross-tenant visibility immediately.
+
+## Database unavailable, timeout, or pool saturation
+
+**Symptoms:** `/readyz` returns 503, `plomid.status` reports disconnected, or
+tools return a backend error.
+
+**Diagnose:** compare `/healthz` (process) and `/readyz` (database); run
+`plomid-mcp doctor` only in an authorized environment. Check PLOMID service,
+network, documented connection/auth settings, server grants, pool size, and
+aggregate 5xx/latency metrics. Never run ad-hoc mutations as a connectivity
+probe.
+
+**Expected:** liveness may remain 200 while database readiness is 503. Restore
+the documented PLOMID endpoint and verify readiness recovers. Do not retry a
+write after disconnect/timeout until commit outcome is checked safely. Escalate
+pool saturation, repeated timeouts, or uncertain mutation commit to the database
+operator.
+
+## Documentation source or retrieval issue
+
+PLOMID-MCP does not currently advertise documentation search/read tools. If a
+documentation page or client guide is wrong, validate both Mintlify projects
+independently and report the page path plus validator output. Do not expect the
+database connection to repair a docs-site build failure.
+
+## Resource exhaustion or slow response
+
+**Symptoms:** increased latency/429/5xx, slow client calls, or process memory
+growth.
+
+**Diagnose:** check bounded aggregate metrics, configured request/query
+concurrency, body/result limits, and pool health through the database operator.
+Do not collect query text or customer result payloads.
+
+**Expected:** excess HTTP concurrency/rate is rejected and query/result limits
+bound work. Reduce incoming concurrency or result size, restore backend health,
+and restart gracefully only if needed. Escalate sustained resource growth or
+limits that fail to bound work.
+
+## Graceful shutdown, upgrade, rollback, and recovery
+
+Send SIGINT and wait for the server to exit; allow the documented drain window
+for active HTTP requests. Before upgrade, preserve the prior binary and
+configuration, verify the new binary with `--version` and `validate`, then
+start it and verify health plus MCP initialization. On failure, stop the new
+process, restore the prior binary/configuration, and repeat the same checks.
+Escalate failed rollback, corrupted persistent state, or uncertain write
+outcomes; this service does not provide a database backup/restore mechanism.
+
+## Suspected security incident
+
+Restrict network access using the deployment's existing controls, preserve
+redacted application/proxy logs and artifact hashes, rotate affected credentials
+through the secret manager, and involve the service/database security owner.
+Do not attach raw credentials, database dumps, SQL parameters, or private keys
+to an issue. No public response SLA or certification is claimed.

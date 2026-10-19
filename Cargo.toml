@@ -1,0 +1,37 @@
+[package]
+name = "plomid-mcp"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+description = "Production-oriented MCP adapter for PLOMID"
+license = "Apache-2.0"
+authors = ["Sainath Sapa <info.djsai@gmail.com>"]
+repository = "https://github.com/plomid/plomid-mcp"
+homepage = "https://github.com/plomid"
+keywords = ["mcp", "plomid", "sql", "database", "ai"]
+categories = ["database", "api-bindings", "command-line-utilities"]
+readme = "README.md"
+
+[workspace]
+members = ["crates/plomid-security", "crates/plomid-mcp-core"]
+resolver = "2"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+plomid-mcp-core = { path = "crates/plomid-mcp-core" }
+rmcp = { version = "3.5.1", features = ["server", "macros", "schemars", "transport-io", "transport-async-rw", "transport-streamable-http-server"] }
+serde_json = "1.0"
+tokio = { version = "1.48", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+
+[dev-dependencies]
+plomid-security = { path = "crates/plomid-security" }
+tempfile = "3.23"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = "allow"
+unused_async_trait_impl = "allow"

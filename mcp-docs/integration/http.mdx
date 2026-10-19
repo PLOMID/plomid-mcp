@@ -1,0 +1,16 @@
+---
+title: "Streamable HTTP"
+description: "Run and secure the HTTP transport."
+---
+
+```bash
+plomid-mcp --database-url "$PLOMID_DATABASE_URL" \
+  --bind 127.0.0.1:8080 http
+```
+
+Connect to `/mcp` using the standard Streamable HTTP MCP transport. `/healthz`
+is process liveness, `/readyz` performs a bounded current database check, and
+`/metrics` exposes aggregate low-cardinality counters. Non-loopback binds
+require a certificate/key pair and configured bearer identities. Host and
+Origin validation, body limits, rate limits, concurrency, and TLS are server
+policy. HTTP testing is independent from STDIO testing.

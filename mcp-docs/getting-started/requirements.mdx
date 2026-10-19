@@ -1,0 +1,16 @@
+---
+title: "Requirements"
+description: "Runtime, database, transport, and client prerequisites."
+---
+
+- Rust 1.99.0, pinned by the repository toolchain file.
+- A PLOMID endpoint reachable through its documented PostgreSQL-wire interface
+  for database-backed tools.
+- An MCP client supporting the negotiated MCP protocol revision and STDIO or
+  Streamable HTTP.
+- Node.js 24.20.0 only for the documentation validation toolchain.
+
+The release workflow is configured to build Linux, macOS, and Windows binaries
+for x86-64 and ARM64. See [platform packaging](/release/platforms) for the
+target list and the distinction between configured targets and completed hosted
+runner qualification. The server does not require a telemetry vendor.

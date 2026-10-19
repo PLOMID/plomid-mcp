@@ -1,0 +1,17 @@
+---
+title: "PLOMID-MCP"
+description: "A standard MCP adapter for the documented PLOMID SQL interface."
+---
+
+PLOMID-MCP exposes bounded PLOMID database operations through standard Model
+Context Protocol (MCP) transports. It is a separate policy boundary: it uses
+the documented PostgreSQL-wire interface and does not read PLOMID storage files
+or link to engine internals.
+
+The public integration contract is the supported MCP protocol revision,
+transport, capabilities, and stable `plomid.*` tools. A client is compatible
+when it implements those standard behaviors; no vendor-specific runtime branch
+is required.
+
+Start with [requirements](/getting-started/requirements), then follow the
+[quickstart](/getting-started/quickstart).

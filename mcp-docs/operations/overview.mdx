@@ -1,0 +1,14 @@
+---
+title: "Operations"
+description: "Logging, health, metrics, shutdown, and resource controls."
+---
+
+Logs are structured JSON on STDERR. Request spans contain generated IDs and
+bounded method/path context; authorization headers, passwords, SQL parameters,
+rows, tenants, subjects, and connection URLs are excluded. `/healthz` means
+the process is alive. `/readyz` returns ready only after a two-second bounded
+current database health check. `/metrics` exposes aggregate counters only.
+
+HTTP body, query concurrency, connection pool, row, result-byte, timeout, rate,
+and active-request limits are configured server-side. Shutdown responds to
+SIGINT and drains the HTTP server through its graceful-shutdown path.

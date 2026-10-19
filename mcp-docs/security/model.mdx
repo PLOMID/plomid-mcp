@@ -1,0 +1,15 @@
+---
+title: "Security model"
+description: "Trust boundaries, authorization, transport, and secret handling."
+---
+
+The client, server process, configuration filesystem, and PLOMID endpoint are
+distinct boundaries. SQL is lexically bounded and read-only policy is enforced
+before the adapter; database read-only grants remain required. Remote requests
+use bearer token digests, scopes, optional schema allowlists, Host/Origin
+validation, and TLS for non-loopback binding. The server exposes no shell or
+filesystem execution tools.
+
+Database and model-facing content is untrusted data and cannot change policy.
+Report suspected vulnerabilities through the repository security process; no
+public SLA or certification is claimed.

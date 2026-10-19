@@ -1,0 +1,17 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "PLOMID-MCP Developer Documentation",
+  "description": "Protocol-first installation, integration, security, and operations documentation for PLOMID-MCP.",
+  "colors": { "primary": "#0E7490" },
+  "navigation": { "groups": [
+    { "group": "Get started", "pages": ["index", "getting-started/requirements", "getting-started/installation", "getting-started/quickstart", "getting-started/first-connection", "getting-started/troubleshooting"] },
+    { "group": "Architecture", "pages": ["architecture/overview", "architecture/trust-boundaries"] },
+    { "group": "Configuration", "pages": ["configuration/reference"] },
+    { "group": "MCP integration", "pages": ["integration/overview", "integration/stdio", "integration/http", "integration/client-compatibility"] },
+    { "group": "Tools", "pages": ["tools/catalog", "tools/query-contract", "tools/write-contract"] },
+    { "group": "Operations and security", "pages": ["operations/overview", "operations/runbooks", "security/model", "security/limitations"] },
+    { "group": "Release reference", "pages": ["release/platforms", "release/verification"] }
+  ] },
+  "footer": { "socials": { "github": "https://github.com/plomid/plomid-mcp" } }
+}

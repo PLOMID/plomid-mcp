@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 540" role="img" aria-labelledby="title desc">
+  <title id="title">PLOMID-MCP architecture</title><desc id="desc">MCP clients connect by STDIO or Streamable HTTP to the PLOMID-MCP server. Its tools and prompt pass through argument validation, authorization and SQL policy, then a supported SQL protocol adapter connects to a separately running PLOMID database. Results return to the client.</desc>
+  <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#0a0b0d" stroke-opacity=".04"/></pattern><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#e2683c"/></marker></defs>
+  <rect width="1200" height="540" fill="#f3f1ec"/><rect width="1200" height="540" fill="url(#grid)"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="40" y="44" fill="#68645d" font-size="12" letter-spacing="2">SYSTEM ARCHITECTURE / PROCESS AND TRUST BOUNDARIES</text>
+    <rect x="36" y="76" width="240" height="370" rx="4" fill="#fffefa" stroke="#c9c5bc"/>
+    <text x="58" y="110" fill="#68645d" font-size="11" letter-spacing="1.4">01 · CONSUMER</text>
+    <rect x="62" y="144" width="188" height="92" rx="3" fill="#0a0b0d"/><text x="156" y="180" fill="#f3f1ec" font-size="14" text-anchor="middle" font-weight="700">MCP CLIENT</text><text x="156" y="204" fill="#bdb9b1" font-size="11" text-anchor="middle">AI agent · IDE · desktop app</text>
+    <path d="M156 260v52" stroke="#e2683c" stroke-width="2" marker-end="url(#arr)"/><text x="170" y="283" fill="#68645d" font-size="10">request</text>
+    <rect x="62" y="326" width="188" height="72" rx="3" fill="#f3f1ec" stroke="#0a0b0d"/><text x="156" y="355" fill="#0a0b0d" font-size="12" text-anchor="middle" font-weight="700">MCP PROTOCOL</text><text x="156" y="378" fill="#68645d" font-size="10" text-anchor="middle">STDIO / Streamable HTTP</text>
+
+    <rect x="316" y="76" width="538" height="370" rx="4" fill="#0a0b0d"/>
+    <path d="M316 76h538v5H316Z" fill="#e2683c"/>
+    <text x="340" y="110" fill="#e2683c" font-size="11" letter-spacing="1.4">02 · INTEGRATION SERVICE</text><text x="340" y="145" fill="#f3f1ec" font-size="22" font-weight="700">PLOMID-MCP</text><text x="340" y="169" fill="#aaa69f" font-size="11">Rust application · database remains an independent service</text>
+    <rect x="340" y="197" width="226" height="91" rx="3" fill="#f3f1ec"/><text x="358" y="222" fill="#68645d" font-size="10" letter-spacing="1">MCP SURFACE</text><text x="358" y="248" fill="#0a0b0d" font-size="12" font-weight="700">Tools + safe-query prompt</text><text x="358" y="270" fill="#68645d" font-size="10">SQL · schema · status · execute</text>
+    <rect x="586" y="197" width="244" height="91" rx="3" fill="#e2683c"/><text x="604" y="222" fill="#0a0b0d" font-size="10" letter-spacing="1">ENFORCEMENT</text><text x="604" y="248" fill="#0a0b0d" font-size="12" font-weight="700">Validation · authorization</text><text x="604" y="270" fill="#0a0b0d" font-size="10">SQL policy · limits · approvals*</text>
+    <path d="M358 319h454" stroke="#55514b"/><text x="358" y="347" fill="#e2683c" font-size="10" letter-spacing="1">DATABASE ADAPTER</text><text x="358" y="374" fill="#f3f1ec" font-size="13" font-weight="700">Supported PLOMID SQL protocol</text><text x="358" y="402" fill="#aaa69f" font-size="10">bounded execution · structured result · redacted error</text>
+
+    <rect x="894" y="76" width="270" height="370" rx="4" fill="#fffefa" stroke="#c9c5bc"/>
+    <text x="918" y="110" fill="#68645d" font-size="11" letter-spacing="1.4">03 · DATABASE SERVICE</text>
+    <ellipse cx="1029" cy="192" rx="69" ry="24" fill="#0a0b0d"/><path d="M960 192v116c0 14 31 25 69 25s69-11 69-25V192" fill="#0a0b0d"/><ellipse cx="1029" cy="308" rx="69" ry="25" fill="#0a0b0d"/><path d="M960 230c0 14 31 25 69 25s69-11 69-25M960 269c0 14 31 25 69 25s69-11 69-25" fill="none" stroke="#e2683c" stroke-width="2"/>
+    <text x="1029" y="245" fill="#f3f1ec" font-size="15" text-anchor="middle" font-weight="700">PLOMID</text>
+    <text x="1029" y="374" fill="#0a0b0d" font-size="12" text-anchor="middle" font-weight="700">Database + SQL endpoint</text><text x="1029" y="398" fill="#68645d" font-size="10" text-anchor="middle">separate process / deployment</text>
+
+    <path d="M276 220h40" fill="none" stroke="#e2683c" stroke-width="2" marker-end="url(#arr)"/><path d="M854 365h40" fill="none" stroke="#e2683c" stroke-width="2" marker-end="url(#arr)"/>
+    <circle cx="874" cy="365" r="3.5" fill="#e2683c"><animateMotion dur="7s" repeatCount="indefinite" path="M0 0 H16"/></circle>
+    <path d="M894 395h-40" fill="none" stroke="#0a0b0d" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 5"/>
+    <text x="876" y="350" fill="#68645d" font-size="9" text-anchor="middle">SQL request</text><text x="876" y="422" fill="#68645d" font-size="9" text-anchor="middle">rows / error</text>
+    <text x="40" y="492" fill="#68645d" font-size="11">* Approval path applies only to opt-in controlled writes. Database grants remain authoritative.</text>
+    <path d="M854 462h310" stroke="#c9c5bc" stroke-dasharray="4 4"/><text x="1009" y="485" fill="#68645d" font-size="10" text-anchor="middle">Independent deployment boundary</text>
+  </g>
+</svg>

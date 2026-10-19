@@ -1,0 +1,28 @@
+# Copy this file to a private path and fill in the connection URL.
+# Do not commit credentials or private deployment configuration.
+database_url = "postgresql://USER:PASSWORD@127.0.0.1:5432/DATABASE"
+mode = "read-only"
+log_level = "info"
+bind = "127.0.0.1:8080"
+allowed_hosts = ["localhost", "127.0.0.1", "::1"]
+allowed_origins = ["http://localhost:*", "http://127.0.0.1:*", "http://[::1]:*"]
+max_request_body_bytes = 4194304
+max_rows = 1000
+max_result_bytes = 8388608
+pool_size = 16
+max_concurrent_queries = 16
+http_concurrency = 64
+rate_limit_per_minute = 600
+write_enabled = false
+write_approval_ttl_secs = 300
+
+# Remote HTTP authentication is required automatically for non-loopback binds.
+# Store only SHA-256 token digests, never bearer tokens themselves.
+# [auth]
+# required = true
+# [[auth.tokens]]
+# token_sha256 = "64-character-sha256-token-digest"
+# subject = "service-agent"
+# tenant = "tenant-a"
+# scopes = ["mcp:read", "sql:read", "schema:read"]
+# schemas = ["public"]

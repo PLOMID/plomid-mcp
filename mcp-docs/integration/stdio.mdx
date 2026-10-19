@@ -1,0 +1,17 @@
+---
+title: "STDIO"
+description: "Launch PLOMID-MCP as a subprocess with clean protocol framing."
+---
+
+```json
+{
+  "command": "/absolute/path/to/plomid-mcp",
+  "args": ["--config", "/private/path/plomid-mcp.toml", "stdio"]
+}
+```
+
+Send MCP JSON-RPC through the process. STDOUT is protocol-only. Structured JSON
+diagnostics are written to STDERR. A real-process smoke test in
+`scripts/mcp_stdio_smoke.py` verifies initialization with protocol
+`2025-11-25`, tool discovery, invalid SQL rejection, stdout purity, and log
+redaction.

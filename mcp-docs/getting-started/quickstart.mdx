@@ -1,0 +1,22 @@
+---
+title: "Quickstart"
+description: "Launch the real server and inspect its standard MCP tools."
+---
+
+Validate a private configuration or environment first:
+
+```bash
+export PLOMID_DATABASE_URL='postgresql://reader@127.0.0.1:5432/plomid'
+plomid-mcp validate
+plomid-mcp capabilities
+```
+
+Launch STDIO:
+
+```bash
+plomid-mcp stdio
+```
+
+The client should initialize, call `tools/list`, then invoke
+`plomid.capabilities` before attempting a database tool. STDOUT is reserved for
+MCP frames; JSON diagnostics are on STDERR.

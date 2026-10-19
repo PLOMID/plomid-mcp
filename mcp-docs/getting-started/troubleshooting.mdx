@@ -1,0 +1,15 @@
+---
+title: "First connection troubleshooting"
+description: "Resolve common installation and initialization failures."
+---
+
+| Symptom | Check |
+|---|---|
+| Executable not found | Use an absolute executable path and run `--version` |
+| Invalid JSON | Separate STDOUT and STDERR; diagnostics must not be parsed as MCP |
+| Initialization error | Check the client's protocol revision and client info |
+| No database tools | Validate `PLOMID_DATABASE_URL` and inspect `plomid.status` |
+| HTTP 401/403 | Check bearer digest, scopes, Host, and Origin policy |
+| `/readyz` is unavailable | Verify PLOMID reachability and credentials |
+
+Never enable unrestricted SQL, disable TLS, or log credentials while debugging.

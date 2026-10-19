@@ -1,0 +1,94 @@
+---
+title: "Configuration reference"
+description: "CLI, environment, TOML, precedence, limits, and validation."
+---
+
+CLI flags override environment variables, which override TOML fields, which
+override defaults. Supported fields are `database_url`, `mode`, `log_level`,
+`bind`, `allowed_hosts`, `allowed_origins`, `max_request_body_bytes`,
+`max_rows`, `max_result_bytes`, `pool_size`, `max_concurrent_queries`,
+`http_concurrency`, `rate_limit_per_minute`, `write_enabled`,
+`write_approval_token_sha256`, `write_approval_ttl_secs`, `tls_cert`, and
+`tls_key`. Environment names use the `PLOMID_MCP_` prefix, with
+`PLOMID_DATABASE_URL` and `RUST_LOG` as documented exceptions.
+
+| Setting | Default | Validation |
+|---|---:|---|
+| `mode` | `read-only` | `read-only` or `controlled-write` |
+| `log_level` | `info` | tracing filter; terminal output is human-readable and colorized when supported, redirected output is JSON; set `NO_COLOR` to disable ANSI colors |
+| `bind` | `127.0.0.1:8080` | non-loopback requires TLS |
+| `allowed_hosts` | `localhost`, `127.0.0.1`, `::1` | nonempty host allowlist |
+| `allowed_origins` | loopback HTTP origins | remote/browser origins must be explicitly configured |
+| `max_request_body_bytes` | 4 MiB | 1 byte–64 MiB |
+| `max_rows` | 1,000 | 1–100,000 |
+| `max_result_bytes` | 8 MiB | 1 byte–256 MiB |
+| `pool_size` | 16 | 1–256 |
+| `max_concurrent_queries` | 16 | 1–256 |
+| `http_concurrency` | 64 | 1–4,096 |
+| `rate_limit_per_minute` | 600 | 1–1,000,000 |
+| `write_enabled` | false | requires controlled-write and digest |
+| `write_approval_token_sha256` | unset | 64 hexadecimal SHA-256 digits when writes are enabled |
+| `write_approval_ttl_secs` | 300 | in-process idempotency expiry |
+| `tls_cert`, `tls_key` | unset | both must be set together; required for non-loopback |
+
+CLI commands are `stdio`, `http`, `validate`, `capabilities`, and `doctor`.
+The server options and their environment variable names are:
+
+| CLI option | Environment variable | TOML key |
+|---|---|---|
+| `--config` | `PLOMID_MCP_CONFIG` | — |
+| `--database-url` | `PLOMID_DATABASE_URL` | `database_url` |
+| `--mode` | `PLOMID_MCP_MODE` | `mode` |
+| `--log-level` | `RUST_LOG` | `log_level` |
+| `--bind` | `PLOMID_MCP_BIND` | `bind` |
+| `--allowed-hosts` | `PLOMID_MCP_ALLOWED_HOSTS` | `allowed_hosts` |
+| `--allowed-origins` | `PLOMID_MCP_ALLOWED_ORIGINS` | `allowed_origins` |
+| `--max-request-body-bytes` | `PLOMID_MCP_MAX_BODY_BYTES` | `max_request_body_bytes` |
+| `--max-rows` | `PLOMID_MCP_MAX_ROWS` | `max_rows` |
+| `--max-result-bytes` | `PLOMID_MCP_MAX_RESULT_BYTES` | `max_result_bytes` |
+| `--pool-size` | `PLOMID_MCP_POOL_SIZE` | `pool_size` |
+| `--max-concurrent-queries` | `PLOMID_MCP_MAX_CONCURRENT_QUERIES` | `max_concurrent_queries` |
+| `--http-concurrency` | `PLOMID_MCP_HTTP_CONCURRENCY` | `http_concurrency` |
+| `--rate-limit-per-minute` | `PLOMID_MCP_RATE_LIMIT_PER_MINUTE` | `rate_limit_per_minute` |
+| `--write-enabled` | `PLOMID_MCP_WRITE_ENABLED` | `write_enabled` |
+| `--write-approval-token-sha256` | `PLOMID_MCP_WRITE_APPROVAL_TOKEN_SHA256` | `write_approval_token_sha256` |
+| `--write-approval-ttl-secs` | `PLOMID_MCP_WRITE_APPROVAL_TTL_SECS` | `write_approval_ttl_secs` |
+| `--tls-cert` | `PLOMID_MCP_TLS_CERT` | `tls_cert` |
+| `--tls-key` | `PLOMID_MCP_TLS_KEY` | `tls_key` |
+
+The TOML `auth` object is documented below; it has no CLI or environment
+representation. Comma-separated CLI/environment allowlists become lists.
+
+`allowed_hosts` defaults to loopback hosts; `allowed_origins` defaults to
+loopback HTTP origins. Override them with explicit host/origin entries when
+deploying behind a trusted TLS proxy. `tls_cert` and `tls_key` must be set
+together; a non-loopback bind is rejected without both.
+
+HTTP bearer configuration is TOML-only under `auth`. Store token digests, never
+raw tokens:
+
+```toml
+[auth]
+required = true
+[[auth.tokens]]
+token_sha256 = "<64-character SHA-256 hex digest>"
+subject = "service-reader"
+tenant = "example"
+scopes = ["mcp:read", "sql:read", "schema:read"]
+schemas = ["public"]
+```
+
+Scopes are enforced per operation. Supported scopes include `mcp:read`,
+`sql:read`, `schema:read`, and `sql:write`. The token digest must be the
+SHA-256 digest of the bearer token; use a secret manager to create and provision
+the actual token. `tenant` is identity context, not a substitute for database
+privileges or independent tenant isolation.
+
+SQL tool input additionally enforces 256 KiB SQL, at most 64 parameters of
+64 KiB each, 1–10,000 rows per call, and up to 120 seconds per operation.
+Database driver and server timeouts may further restrict execution. HTTP body
+size defaults to 4 MiB, and the database pool defaults to 16 connections.
+
+Database URLs must use `postgres://` or `postgresql://` and include a host.
+Bearer tokens are never stored directly: configure SHA-256 token digests with
+scopes and optional schema allowlists. Validate with `plomid-mcp validate`.

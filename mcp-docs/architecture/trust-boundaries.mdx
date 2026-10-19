@@ -1,0 +1,10 @@
+---
+title: "Trust boundaries"
+description: "Security boundaries and data handling assumptions."
+---
+
+The client, server process, configured filesystem, and PLOMID endpoint are
+separate trust boundaries. Database and document content is untrusted data and
+does not modify server policy. Credentials are supplied through protected
+configuration, stored as digests where applicable, and excluded from tools,
+logs, and error responses. Database roles remain the final privilege boundary.

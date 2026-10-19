@@ -1,0 +1,14 @@
+---
+title: "Architecture"
+description: "The MCP, policy, and documented database boundaries."
+---
+
+```text
+MCP client -> STDIO or Streamable HTTP -> rmcp server and tool policy
+                                      -> PlomidDatabase adapter
+                                      -> documented PLOMID SQL interface
+```
+
+The adapter is the only database boundary. PLOMID-MCP does not access storage
+files, private engine internals, or a side database. Read-only mode is the
+default. Controlled writes are a separately advertised and authorized feature.

@@ -1,0 +1,13 @@
+/target/
+/.cargo/
+*.log
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+dist/
+coverage/
+.DS_Store

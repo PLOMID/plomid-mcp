@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  quality-and-transport:
+    name: "🦀 Rust quality · MCP transports"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: "🔧 Install pinned Rust toolchain"
+        run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+      - name: "🧹 Format check"
+        run: cargo fmt --all -- --check
+      - name: "🔍 Workspace checks"
+        run: cargo check --workspace --all-targets --locked
+      - name: "🛡️ Clippy (warnings denied)"
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: "🧪 Unit, integration, and documentation tests"
+        run: |
+          echo '::group::🧪 Workspace tests'
+          cargo test --workspace --locked
+          echo '::endgroup::'
+          echo '::group::📚 Documentation tests'
+          cargo test --workspace --doc --locked
+          echo '::endgroup::'
+      - name: "📦 Optimized build"
+        run: cargo build --workspace --release --locked
+      - name: "🔌 MCP transport and capability smoke tests"
+        run: |
+          echo '::group::STDIO transport'
+          python3 scripts/mcp_stdio_smoke.py target/release/plomid-mcp
+          echo '::endgroup::'
+          echo '::group::Streamable HTTP transport'
+          python3 scripts/mcp_http_smoke.py target/release/plomid-mcp
+          echo '::endgroup::'
+          echo '::group::Declared capability contract'
+          python3 scripts/mcp_capability_conformance.py target/release/plomid-mcp
+          echo '::endgroup::'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: mcp-docs/.node-version
+      - name: "🔎 Independent MCP Inspector discovery"
+        run: npx --yes @modelcontextprotocol/inspector@2.11.0 --cli --transport stdio -e PLOMID_DATABASE_URL=postgresql://reader:synthetic-secret@127.0.0.1:1/plomid target/release/plomid-mcp stdio --method tools/list --strict --format json
+
+  package:
+    name: "📦 Package · install validation"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: "🔧 Install pinned Rust toolchain"
+        run: rustup toolchain install 1.99.0 --profile minimal
+      - name: "🏗️ Build release binary"
+        run: cargo build --workspace --release --locked
+      - run: cargo install cargo-cyclonedx --locked --version 0.5.9
+      - name: "🧾 Generate SBOM"
+        run: cargo cyclonedx --format json
+      - name: "📦 Create package and checksum"
+        run: python3 scripts/package_release.py --output dist
+      - name: "✅ Validate package, checksum, and MCP protocol"
+        run: |
+          package=$(find dist -name '*.tar.gz' -print -quit)
+          test -n "$package"
+          python3 scripts/validate_package.py "$package"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: plomid-mcp-package-linux-x86_64
+          path: dist/*
+
+  documentation:
+    name: "📚 Documentation validation"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: mcp-docs/.node-version
+      - run: npm install --global mintlify@4.2.981
+      - name: "✅ Validate documentation"
+        run: mintlify validate
+        working-directory: mcp-docs
+      - name: "🔗 Check documentation links"
+        run: mintlify broken-links
+        working-directory: mcp-docs
+      - name: "🧭 Validate repository documentation references"
+        run: python3 scripts/validate_docs.py
+
+  supply-chain:
+    name: "🔐 Supply chain · dependency policy"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - run: rustup toolchain install 1.99.0 --profile minimal
+      - run: cargo install cargo-deny --locked --version 0.20.2
+      - name: "🛡️ Check dependency advisories and licenses"
+        run: cargo deny check advisories licenses
+      - run: cargo install cargo-audit --locked --version 0.22.2
+      - name: "🔎 Audit Rust dependencies"
+        run: cargo audit
+      - run: cargo install cargo-cyclonedx --locked --version 0.5.9
+      - name: "🧾 Generate and verify SBOMs"
+        run: |
+          cargo cyclonedx --format json
+          test -s plomid-mcp.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: plomid-mcp-sboms
+          path: |
+            plomid-mcp.cdx.json
+            crates/plomid-security/plomid-security.cdx.json
+
+  live-plomid:
+    name: "🗄️ Authorized live PLOMID integration"
+    if: ${{ vars.PLOMID_LIVE_DATABASE_TESTS == 'true' }}
+    runs-on: ubuntu-24.04
+    env:
+      PLOMID_TEST_DATABASE_URL: ${{ secrets.PLOMID_TEST_DATABASE_URL }}
+      PLOMID_TEST_TLS_DATABASE_URL: ${{ secrets.PLOMID_TEST_TLS_DATABASE_URL }}
+      SSL_CERT_FILE: ${{ secrets.PLOMID_TEST_TLS_CA_FILE }}
+      PLOMID_MCP_QUALIFICATION_URL: ${{ secrets.PLOMID_MCP_QUALIFICATION_URL }}
+      PLOMID_MCP_QUALIFICATION_TOKEN: ${{ secrets.PLOMID_MCP_QUALIFICATION_TOKEN }}
+      PLOMID_MCP_QUALIFICATION_LIMITED_TOKEN: ${{ secrets.PLOMID_MCP_QUALIFICATION_LIMITED_TOKEN }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - run: rustup toolchain install 1.99.0 --profile minimal
+      - name: "🔌 Verify live SQL and TLS behavior"
+        run: cargo test --test plomid_live live_plomid_read_query_parameters_limits_and_errors -- --ignored
+      - if: ${{ env.PLOMID_TEST_TLS_DATABASE_URL != '' && env.SSL_CERT_FILE != '' }}
+        run: cargo test --test plomid_live live_plomid_tls_certificate_is_verified -- --ignored
+      - if: ${{ env.PLOMID_MCP_QUALIFICATION_URL != '' }}
+        run: |
+          cargo build --release --locked
+          python3 scripts/live_plomid_qualification.py

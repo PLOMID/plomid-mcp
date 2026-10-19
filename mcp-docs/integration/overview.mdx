@@ -1,0 +1,22 @@
+---
+title: "MCP integration"
+description: "Client-neutral integration requirements and protocol scope."
+---
+
+The product contract is standard MCP initialization, version negotiation,
+capability discovery, `tools/list`, `tools/call`, `prompts/list`, and
+`prompts/get`, JSON-RPC errors, and lifecycle behavior. This build exposes
+tools and the `plomid.safe-query-workflow` prompt through STDIO and Streamable
+HTTP. The release binary has been
+verified with standard clients using the `2025-11-25` initialize lifecycle and
+the `2026-07-28` modern stateless lifecycle. Clients must support a protocol
+revision and transport they negotiate with the server. This does not imply
+that every SDK-supported revision or optional capability has been independently
+tested.
+
+The server does not advertise unsupported tools: controlled-write tools are
+removed from the route list unless their server policy is enabled. Protocol
+capabilities are negotiated by `rmcp` 3.5.1; optional client extensions are
+not required or implied. Tool result formatting and capability claims are
+limited to what the server returns on the wire; direct independent-client
+validation remains outstanding.

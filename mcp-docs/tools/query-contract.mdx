@@ -1,0 +1,21 @@
+---
+title: "Read and query contract"
+description: "Safe SQL, EXPLAIN, schemas, limits, results, and errors."
+---
+
+`plomid.sql.query` accepts one read-only statement. SQL is limited to 256 KiB;
+parameters to 64 values and 64 KiB each; the per-call row limit is clamped to
+1–10,000; and timeout is clamped to 1–120,000 ms. The configured response row
+limit is separately bounded to 1–100,000, and encoded results to 1–256 MiB.
+
+```json
+{"sql":"SELECT id FROM events WHERE id = $1","parameters":["42"],"row_limit":100,"timeout_ms":10000}
+```
+
+`plomid.sql.explain` requires an `EXPLAIN` statement. Metadata tools expose only
+the documented PLOMID catalog boundary and apply schema policy. Successful
+tool output is returned in MCP text content as JSON with bounded data and
+metadata; clients should not assume the optional `structuredContent` field is
+present. Invalid SQL is an invalid-params error; authorization, timeout, and
+backend errors use safe categories without credentials, connection URLs, or
+stack traces.

@@ -1,0 +1,26 @@
+---
+title: "Installation"
+description: "Build and install PLOMID-MCP from source."
+---
+
+```bash
+rustup show
+cargo build --release --locked
+install -m 0755 target/release/plomid-mcp "$HOME/.local/bin/plomid-mcp"
+plomid-mcp --version
+```
+
+When a version-tag release workflow succeeds, its platform-specific archives,
+SHA-256 checksums, and attested provenance are attached to the project's GitHub
+release. Download a package matching your target triple and verify its checksum
+before extracting and installing it. The server still requires an independently
+running PLOMID database. Keep the executable and private configuration file
+owned by the service account. Upgrade by validating the new binary, retaining
+the previous binary for rollback, and replacing it during a controlled restart.
+
+The isolated package qualification is reproducible with
+`scripts/upgrade_rollback_qualification.py`. It requires both the current
+archive and a distinct previous archive plus their adjacent SHA-256 files; it
+checks configuration/state preservation, interrupted replacement recovery,
+protocol smoke, and rollback. The first release cannot run this gate until a
+previous published package exists.

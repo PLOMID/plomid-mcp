@@ -1,0 +1,15 @@
+---
+title: "Controlled-write contract"
+description: "Explicitly gated DML behavior and uncertain commit handling."
+---
+
+`plomid.sql.execute` is absent from read-only `tools/list`. It is advertised
+only when `controlled-write` mode and `write_enabled` are both configured. The
+caller must also have `sql:write`, provide the configured approval token, send
+one validated DML statement, and supply a 16–256 character idempotency key.
+
+Writes run through a transaction and report commit status. If a client
+disconnects or a timeout occurs after dispatch, commit status is uncertain;
+never blindly retry. Verify application state using a safe read and the
+idempotency policy. Client confirmation prompts do not replace server policy or
+database privileges.

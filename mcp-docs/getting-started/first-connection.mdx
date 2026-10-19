@@ -1,0 +1,17 @@
+---
+title: "First MCP connection"
+description: "Connect a standard client and make a safe request."
+---
+
+For a generic STDIO client, configure:
+
+```text
+command: /absolute/path/to/plomid-mcp
+args: ["--config", "/private/path/plomid-mcp.toml", "stdio"]
+```
+
+Initialize with a supported protocol revision, inspect the negotiated
+capabilities, list tools, and call `plomid.capabilities` with `{}`. Then use
+`plomid.sql.query` only with a bounded, read-only statement. Client-specific
+configuration guides are optional examples; the standard MCP contract is the
+boundary.
